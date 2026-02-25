@@ -1,0 +1,19 @@
+# macOS
+.DS_Store
+
+# Node
+node_modules/
+dist/
+.env
+
+# Java / Spring
+target/
+*.log
+*.class
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+Thumbs.db
