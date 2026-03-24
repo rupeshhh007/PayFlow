@@ -44,6 +44,6 @@ public class SecurityConfig {
                         UsernamePasswordAuthenticationFilter.class
                 );
 
-        return http.build();
+        return http.build(); //testing some features
     }
 }
