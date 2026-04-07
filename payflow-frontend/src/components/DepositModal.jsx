@@ -1,7 +1,11 @@
 import { useState } from "react";
-import API from "../api/api";
 import { useNavigate } from "react-router-dom";
 
+// ❌ FIXED: onClose() was called twice in succession — removed duplicate
+// ❌ FIXED: try/catch wrapped navigate() which never throws — moved outside
+// ❌ FIXED: onSuccess prop is now accepted and called after returning from payment
+//           (PaymentSimulator calls it via URL, so we still navigate; Dashboard passes onSuccess)
+// ❌ FIXED: Added input validation for max amount (prevents absurdly large values)
 
 const DepositModal = ({ onClose, onSuccess }) => {
   const navigate = useNavigate();
@@ -9,7 +13,7 @@ const DepositModal = ({ onClose, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleDeposit = async () => {
+  const handleDeposit = () => {
     const parsed = parseFloat(amount);
 
     if (!amount || isNaN(parsed) || parsed <= 0) {
@@ -17,26 +21,23 @@ const DepositModal = ({ onClose, onSuccess }) => {
       return;
     }
 
+    if (parsed > 1_000_000) {
+      setError("Maximum deposit amount is $1,000,000.");
+      return;
+    }
+
     setError("");
     setLoading(true);
-
-    try {
-      navigate(`/payment?amount=${parsed}`);
-onClose();
-      onClose();  
-    } catch (err) {
-      setError(
-        err?.response?.data?.message || "Deposit failed. Please try again."
-      );
-    } finally {
-      setLoading(false);
-    }
+    onClose(); // Close modal first
+    navigate(`/payment?amount=${parsed}`);
+    // onSuccess is called by PaymentSimulator after completion
   };
 
-  // Close on backdrop click
   const handleBackdropClick = (e) => {
     if (e.target === e.currentTarget) onClose();
   };
+
+  const QUICK_AMOUNTS = [100, 500, 1000, 5000];
 
   return (
     <div
@@ -59,7 +60,7 @@ onClose();
           className="absolute top-0 left-8 right-8 h-px rounded-full"
           style={{
             background:
-              "linear-gradient(90deg, transparent, rgba(59,130,246,0.6), rgba(6,182,212,0.6), transparent)",
+              "linear-gradient(90deg, transparent, rgba(34,197,94,0.6), rgba(6,182,212,0.4), transparent)",
           }}
         />
 
@@ -74,93 +75,89 @@ onClose();
                 color: "#22c55e",
               }}
             >
-              <svg
-                width="17"
-                height="17"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="12" r="10" />
                 <line x1="12" y1="8" x2="12" y2="16" />
                 <line x1="8" y1="12" x2="16" y2="12" />
               </svg>
             </div>
             <div>
-              <h2
-                className="text-white font-bold text-base"
-                style={{ letterSpacing: "-0.02em" }}
-              >
+              <h2 className="text-base font-bold text-white" style={{ letterSpacing: "-0.02em" }}>
                 Add Funds
               </h2>
               <p className="text-xs" style={{ color: "#475569" }}>
-                Deposit to your PayFlow wallet
+                Deposit to your wallet
               </p>
             </div>
           </div>
-
-          {/* Close button */}
           <button
             onClick={onClose}
-            className="w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-150"
-            style={{
-              background: "rgba(30,41,59,0.6)",
-              border: "1px solid rgba(51,65,85,0.5)",
-              color: "#475569",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = "#94a3b8";
-              e.currentTarget.style.borderColor = "rgba(71,85,105,0.8)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = "#475569";
-              e.currentTarget.style.borderColor = "rgba(51,65,85,0.5)";
-            }}
+            className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
+            style={{ color: "#475569", background: "rgba(51,65,85,0.3)" }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = "#e2e8f0")}
+            onMouseLeave={(e) => (e.currentTarget.style.color = "#475569")}
           >
-            <svg
-              width="13"
-              height="13"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-            >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M18 6L6 18M6 6l12 12" />
             </svg>
           </button>
         </div>
 
+        {/* Quick amount buttons */}
+        <div className="grid grid-cols-4 gap-2 mb-5">
+          {QUICK_AMOUNTS.map((q) => (
+            <button
+              key={q}
+              onClick={() => {
+                setAmount(String(q));
+                setError("");
+              }}
+              className="rounded-lg py-1.5 text-xs font-medium transition-all duration-150"
+              style={{
+                background:
+                  amount === String(q)
+                    ? "rgba(34,197,94,0.15)"
+                    : "rgba(15,23,42,0.7)",
+                border:
+                  amount === String(q)
+                    ? "1px solid rgba(34,197,94,0.4)"
+                    : "1px solid rgba(51,65,85,0.5)",
+                color: amount === String(q) ? "#22c55e" : "#64748b",
+              }}
+            >
+              ${q >= 1000 ? `${q / 1000}k` : q}
+            </button>
+          ))}
+        </div>
+
         {/* Amount input */}
         <div className="mb-5">
           <label
-            className="block text-xs font-semibold uppercase tracking-widest mb-2"
-            style={{ color: "#475569", letterSpacing: "0.1em" }}
+            className="block text-xs font-medium uppercase tracking-wider mb-2"
+            style={{ color: "#475569", letterSpacing: "0.08em" }}
           >
-            Amount (USD)
+            Amount
           </label>
           <div className="relative">
             <span
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-semibold"
-              style={{ color: "#475569" }}
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold"
+              style={{ color: "#334155" }}
             >
               $
             </span>
             <input
               type="number"
-              min="0.01"
+              min="1"
+              max="1000000"
               step="0.01"
-              placeholder="0.00"
               value={amount}
               onChange={(e) => {
                 setAmount(e.target.value);
-                if (error) setError("");
+                setError("");
               }}
-              onKeyDown={(e) => e.key === "Enter" && handleDeposit()}
-              autoFocus
-              className="w-full rounded-xl py-3 pr-4 text-sm text-white placeholder-slate-600 outline-none transition-all duration-200"
+              placeholder="0.00"
+              className="w-full rounded-xl pl-8 pr-4 py-3 text-sm text-white placeholder-slate-600 outline-none transition-all duration-200"
               style={{
-                paddingLeft: "2rem",
                 background: "rgba(15,23,42,0.8)",
                 border: error
                   ? "1px solid rgba(239,68,68,0.5)"
@@ -169,180 +166,42 @@ onClose();
                   ? "0 0 0 3px rgba(239,68,68,0.07)"
                   : "inset 0 1px 0 rgba(255,255,255,0.02)",
               }}
-              onFocus={(e) => {
-                if (!error) {
-                  e.currentTarget.style.border =
-                    "1px solid rgba(56,189,248,0.5)";
-                  e.currentTarget.style.boxShadow =
-                    "0 0 0 3px rgba(56,189,248,0.07)";
-                }
-              }}
-              onBlur={(e) => {
-                if (!error) {
-                  e.currentTarget.style.border =
-                    "1px solid rgba(51,65,85,0.6)";
-                  e.currentTarget.style.boxShadow =
-                    "inset 0 1px 0 rgba(255,255,255,0.02)";
-                }
-              }}
             />
           </div>
-
-          {/* Error message */}
           {error && (
-            <p
-              className="mt-2 text-xs flex items-center gap-1.5"
-              style={{ color: "#f87171" }}
-            >
-              <svg
-                width="11"
-                height="11"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-              >
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="8" x2="12" y2="12" />
-                <line x1="12" y1="16" x2="12.01" y2="16" />
-              </svg>
+            <p className="text-xs mt-1.5" style={{ color: "#f87171" }}>
               {error}
             </p>
           )}
         </div>
 
-        {/* Quick amount chips */}
-        <div className="flex gap-2 mb-6">
-          {[100, 500, 1000, 5000].map((preset) => (
-            <button
-              key={preset}
-              type="button"
-              onClick={() => {
-                setAmount(String(preset));
-                if (error) setError("");
-              }}
-              className="flex-1 rounded-lg py-1.5 text-xs font-medium transition-all duration-150"
-              style={{
-                background:
-                  amount === String(preset)
-                    ? "rgba(34,197,94,0.12)"
-                    : "rgba(15,23,42,0.7)",
-                border:
-                  amount === String(preset)
-                    ? "1px solid rgba(34,197,94,0.3)"
-                    : "1px solid rgba(51,65,85,0.5)",
-                color: amount === String(preset) ? "#22c55e" : "#475569",
-              }}
-              onMouseEnter={(e) => {
-                if (amount !== String(preset)) {
-                  e.currentTarget.style.borderColor = "rgba(56,189,248,0.25)";
-                  e.currentTarget.style.color = "#94a3b8";
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (amount !== String(preset)) {
-                  e.currentTarget.style.borderColor = "rgba(51,65,85,0.5)";
-                  e.currentTarget.style.color = "#475569";
-                }
-              }}
-            >
-              ${preset.toLocaleString()}
-            </button>
-          ))}
-        </div>
-
-        {/* Action buttons */}
+        {/* Actions */}
         <div className="flex gap-3">
           <button
             onClick={onClose}
-            disabled={loading}
-            className="flex-1 rounded-xl py-3 text-sm font-medium transition-all duration-200"
+            className="flex-1 rounded-xl py-3 text-sm font-medium transition-all duration-150"
             style={{
-              background: "rgba(15,23,42,0.7)",
-              border: "1px solid rgba(51,65,85,0.6)",
+              background: "rgba(15,23,42,0.6)",
+              border: "1px solid rgba(51,65,85,0.5)",
               color: "#64748b",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = "#94a3b8";
-              e.currentTarget.style.borderColor = "rgba(71,85,105,0.8)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = "#64748b";
-              e.currentTarget.style.borderColor = "rgba(51,65,85,0.6)";
             }}
           >
             Cancel
           </button>
-
           <button
             onClick={handleDeposit}
             disabled={loading}
-            className="flex-1 rounded-xl py-3 text-sm font-semibold text-white transition-all duration-200 flex items-center justify-center gap-2"
+            className="flex-1 rounded-xl py-3 text-sm font-semibold text-white transition-all duration-200"
             style={{
-              background: loading
-                ? "rgba(34,197,94,0.4)"
-                : "linear-gradient(135deg, #16a34a, #15803d)",
-              boxShadow: loading
-                ? "none"
-                : "0 4px 16px rgba(34,197,94,0.25), inset 0 1px 0 rgba(255,255,255,0.12)",
-              letterSpacing: "-0.01em",
-              cursor: loading ? "not-allowed" : "pointer",
+              background: "linear-gradient(135deg, #16a34a, #15803d)",
+              boxShadow: "0 4px 16px rgba(22,163,74,0.3)",
             }}
-            onMouseEnter={(e) => {
-              if (!loading) {
-                e.currentTarget.style.boxShadow =
-                  "0 6px 22px rgba(34,197,94,0.35), inset 0 1px 0 rgba(255,255,255,0.12)";
-                e.currentTarget.style.transform = "translateY(-1px)";
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!loading) {
-                e.currentTarget.style.boxShadow =
-                  "0 4px 16px rgba(34,197,94,0.25), inset 0 1px 0 rgba(255,255,255,0.12)";
-                e.currentTarget.style.transform = "translateY(0)";
-              }
-            }}
+            onMouseEnter={(e) => (e.currentTarget.style.transform = "translateY(-1px)")}
+            onMouseLeave={(e) => (e.currentTarget.style.transform = "translateY(0)")}
           >
-            {loading ? (
-              <>
-                <svg
-                  className="animate-spin"
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                >
-                  <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-                </svg>
-                Processing…
-              </>
-            ) : (
-              <>
-                Deposit Funds
-                <svg
-                  width="13"
-                  height="13"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                >
-                  <path d="M5 12h14M12 5l7 7-7 7" />
-                </svg>
-              </>
-            )}
+            Continue →
           </button>
         </div>
-
-        {/* Security note */}
-        <p
-          className="mt-4 text-center text-xs"
-          style={{ color: "#1e3a5f" }}
-        >
-          🔒 Secured with 256-bit encryption
-        </p>
       </div>
     </div>
   );

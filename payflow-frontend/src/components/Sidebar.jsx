@@ -1,4 +1,9 @@
 import { useNavigate, useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { getTransactions } from "../api/walletApi";
+
+// ❌ FIXED: Hardcoded badge "12" on Transactions nav item — now shows real transaction count
+// ✨ ADDED: Badge auto-hides when count is 0
 
 const NAV_ITEMS = [
   {
@@ -16,7 +21,7 @@ const NAV_ITEMS = [
   {
     id: "transactions",
     label: "Transactions",
-    badge: "12",
+    showCount: true,
     icon: (
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
         <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
@@ -58,25 +63,47 @@ const NAV_ITEMS = [
 const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [txCount, setTxCount] = useState(0);
+
+  useEffect(() => {
+    getTransactions()
+      .then((res) => setTxCount(res.data?.length ?? 0))
+      .catch(() => {});
+  }, []);
+
   return (
     <aside
-      className="fixed left-0 top-14 bottom-0 w-56 flex flex-col py-5 px-3"
+      className="fixed left-0 top-14 bottom-0 w-56 flex flex-col gap-6 px-3 py-5 overflow-y-auto"
       style={{
-        background: "rgba(10, 14, 26, 0.95)",
-        borderRight: "1px solid rgba(148, 163, 184, 0.07)",
+        background:
+          "linear-gradient(180deg, rgba(10,14,26,0.97) 0%, rgba(8,12,22,0.99) 100%)",
+        borderRight: "1px solid rgba(148,163,184,0.06)",
+        zIndex: 40,
       }}
     >
-      {/* Nav section label */}
-      <p
-        className="text-xs font-semibold uppercase tracking-widest mb-3 px-3"
-        style={{ color: "#1e3a5f", letterSpacing: "0.12em" }}
-      >
-        Main Menu
-      </p>
+      {/* Logo wordmark */}
+      <div className="px-2 mb-1">
+        <p
+          className="text-xs font-semibold uppercase tracking-widest"
+          style={{
+            color: "#1e3a5f",
+            letterSpacing: "0.12em",
+          }}
+        >
+          Main Menu
+        </p>
+      </div>
 
       <nav className="flex flex-col gap-1">
         {NAV_ITEMS.map((item) => {
           const isActive = location.pathname === `/${item.id}`;
+          const badge =
+            item.showCount && txCount > 0
+              ? txCount > 99
+                ? "99+"
+                : String(txCount)
+              : null;
+
           return (
             <button
               key={item.id}
@@ -107,7 +134,6 @@ const Sidebar = () => {
                 }
               }}
             >
-              {/* Active left indicator */}
               {isActive && (
                 <span
                   className="absolute left-0 top-2 bottom-2 w-0.5 rounded-full"
@@ -121,7 +147,7 @@ const Sidebar = () => {
                 {item.icon}
               </span>
               <span>{item.label}</span>
-              {item.badge && (
+              {badge && (
                 <span
                   className="ml-auto text-xs font-semibold rounded-md px-1.5 py-0.5"
                   style={{
@@ -130,7 +156,7 @@ const Sidebar = () => {
                     fontSize: "0.65rem",
                   }}
                 >
-                  {item.badge}
+                  {badge}
                 </span>
               )}
             </button>
@@ -138,7 +164,7 @@ const Sidebar = () => {
         })}
       </nav>
 
-      {/* Bottom upgrade nudge */}
+      {/* Upgrade nudge */}
       <div className="mt-auto mx-1">
         <div
           className="rounded-xl p-3.5"
@@ -152,7 +178,7 @@ const Sidebar = () => {
             Upgrade to Pro
           </p>
           <p className="text-xs mb-3" style={{ color: "#475569" }}>
-            Unlock analytics & higher limits
+            Unlock analytics &amp; higher limits
           </p>
           <button
             className="w-full rounded-lg py-1.5 text-xs font-semibold text-white transition-all duration-200"

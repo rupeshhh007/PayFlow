@@ -1,11 +1,18 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import API from "../api/api";
 
 const AuthContext = createContext();
 
+// ---------------- SAFE TOKEN DECODE ----------------
 const decodeToken = (token) => {
   try {
     const payload = JSON.parse(atob(token.split(".")[1]));
+
+    // check expiry
+    if (payload.exp && payload.exp * 1000 < Date.now()) {
+      return null;
+    }
 
     return {
       email:
@@ -13,6 +20,7 @@ const decodeToken = (token) => {
         payload.email ||
         payload.username ||
         null,
+      exp: payload.exp,
     };
   } catch {
     return null;
@@ -26,7 +34,7 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // ✅ Load auth on refresh
+  // ---------------- INIT AUTH ----------------
   useEffect(() => {
     const storedToken = localStorage.getItem("token");
 
@@ -36,33 +44,69 @@ export const AuthProvider = ({ children }) => {
       if (decoded) {
         setUser(decoded);
         setToken(storedToken);
+
+        // attach token to axios
+        API.defaults.headers.common[
+          "Authorization"
+        ] = `Bearer ${storedToken}`;
+      } else {
+        localStorage.removeItem("token");
       }
     }
 
     setLoading(false);
   }, []);
 
-  // ✅ LOGIN
+  // ---------------- LOGIN ----------------
   const login = (jwtToken) => {
-    localStorage.setItem("token", jwtToken);
-
     const decoded = decodeToken(jwtToken);
+
+    if (!decoded) {
+      logout();
+      return;
+    }
+
+    localStorage.setItem("token", jwtToken);
 
     setToken(jwtToken);
     setUser(decoded);
 
-    navigate("/dashboard");
+    // attach token globally
+    API.defaults.headers.common[
+      "Authorization"
+    ] = `Bearer ${jwtToken}`;
   };
 
-  // ✅ LOGOUT
+  // ---------------- LOGOUT ----------------
   const logout = () => {
     localStorage.removeItem("token");
 
     setUser(null);
     setToken(null);
 
+    delete API.defaults.headers.common["Authorization"];
+
     navigate("/login", { replace: true });
   };
+
+  // ---------------- AUTO LOGOUT ON EXPIRY ----------------
+  useEffect(() => {
+    if (!user?.exp) return;
+
+    const timeout = user.exp * 1000 - Date.now();
+
+    if (timeout <= 0) {
+      logout();
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      toast.error("Session expired. Please login again.");
+      logout();
+    }, timeout);
+
+    return () => clearTimeout(timer);
+  }, [user]);
 
   return (
     <AuthContext.Provider
@@ -71,7 +115,7 @@ export const AuthProvider = ({ children }) => {
         token,
         login,
         logout,
-        isAuthenticated: !!user,
+        isAuthenticated: !!token,
         loading,
       }}
     >
@@ -80,5 +124,5 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-// ✅ Hook
+// ---------------- HOOK ----------------
 export const useAuth = () => useContext(AuthContext);

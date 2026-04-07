@@ -2,24 +2,10 @@ import { useState, useEffect, useMemo } from "react";
 import API from "../api/api";
 import TransactionStats from "../components/TransactionStats";
 import TransactionFilters from "../components/TransactionFilters";
+import { useCurrency } from "../context/CurrencyContext";
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-const fmt = (n) =>
-  new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 2,
-  }).format(n);
-
-const fmtDate = (iso) => {
-  const d = new Date(iso);
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-};
-
-const fmtTime = (iso) => {
-  const d = new Date(iso);
-  return d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
-};
+// ❌ FIXED: fmt() helper was hardcoded to "USD" — now reads from CurrencyContext
+// ❌ FIXED: Row border logic used `i < displayed.length - 1` inconsistently; normalised
 
 // ── Type config ───────────────────────────────────────────────────────────────
 const TYPE_CONFIG = {
@@ -71,10 +57,7 @@ const SkeletonRow = () => (
       <td key={i} className="px-5 py-4">
         <div
           className="h-3.5 rounded-full animate-pulse"
-          style={{
-            width: `${w}px`,
-            background: "rgba(30,41,59,0.8)",
-          }}
+          style={{ width: `${w}px`, background: "rgba(30,41,59,0.8)" }}
         />
       </td>
     ))}
@@ -98,12 +81,12 @@ const EmptyState = ({ search, filter }) => (
           </svg>
         </div>
         <p className="text-sm font-semibold text-white" style={{ letterSpacing: "-0.01em" }}>
-          {search ? "No results found" : "No transactions yet"}
+          {search || filter !== "ALL" ? "No matching transactions" : "No transactions yet"}
         </p>
-        <p className="text-xs text-center max-w-xs" style={{ color: "#334155" }}>
-          {search
-            ? `No transactions match "${search}" ${filter !== "ALL" ? `in this filter` : ""}.`
-            : "Your transaction history will appear here once you start transacting."}
+        <p className="text-xs" style={{ color: "#334155" }}>
+          {search || filter !== "ALL"
+            ? "Try adjusting your filters"
+            : "Make a deposit or transfer to get started"}
         </p>
       </div>
     </td>
@@ -112,174 +95,138 @@ const EmptyState = ({ search, filter }) => (
 
 // ── Main Component ────────────────────────────────────────────────────────────
 const Transactions = () => {
+  const { currency } = useCurrency();
   const [transactions, setTransactions] = useState([]);
-  const [loading, setLoading]           = useState(true);
-  const [filter, setFilter]             = useState("ALL");
-  const [search, setSearch]             = useState("");
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState("ALL");
+  const [dateRange, setDateRange] = useState({ from: "", to: "" });
 
-  // ── Fetch ──────────────────────────────────────────────────────────────────
+  // ❌ FIXED: currency now comes from CurrencyContext, not hardcoded "USD"
+  const fmt = (n) =>
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 2,
+    }).format(n);
+
+  const fmtDate = (iso) => {
+    const d = new Date(iso);
+    return d.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
+  const fmtTime = (iso) => {
+    const d = new Date(iso);
+    return d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+  };
+
   useEffect(() => {
-    const fetchTx = async () => {
-      try {
-        const res = await API.get("/transactions");
-        // newest first
-        const sorted = [...(res.data || [])].sort(
-          (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-        );
-        setTransactions(sorted);
-      } catch (err) {
-        console.error("Failed to fetch transactions:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchTx();
+    setLoading(true);
+    API.get("/transactions")
+      .then((res) => setTransactions(res.data))
+      .catch(() => setTransactions([]))
+      .finally(() => setLoading(false));
   }, []);
 
-  // ── Filter counts ──────────────────────────────────────────────────────────
-  const counts = useMemo(() => {
-    const c = { ALL: transactions.length, DEPOSIT: 0, TRANSFER_SENT: 0, TRANSFER_RECEIVED: 0 };
-    for (const tx of transactions) if (c[tx.type] !== undefined) c[tx.type]++;
-    return c;
-  }, [transactions]);
-
-  // ── Filtered + searched list ───────────────────────────────────────────────
   const displayed = useMemo(() => {
-    let list = transactions;
+    let list = [...transactions].sort(
+      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+    );
 
     if (filter !== "ALL") {
-      list = list.filter((tx) => tx.type === filter);
+      list = list.filter((t) => t.type === filter);
     }
 
     if (search.trim()) {
-      const q = search.toLowerCase();
+      const q = search.trim().toLowerCase();
       list = list.filter(
-        (tx) =>
-          String(tx.id).includes(q) ||
-          tx.type.toLowerCase().includes(q) ||
-          (tx.receiverEmail && tx.receiverEmail.toLowerCase().includes(q)) ||
-          (tx.senderEmail   && tx.senderEmail.toLowerCase().includes(q))
+        (t) =>
+          String(t.id).includes(q) ||
+          (t.receiverEmail || "").toLowerCase().includes(q) ||
+          (t.senderEmail || "").toLowerCase().includes(q) ||
+          t.type.toLowerCase().includes(q)
+      );
+    }
+
+    if (dateRange.from) {
+      list = list.filter(
+        (t) => new Date(t.createdAt) >= new Date(dateRange.from)
+      );
+    }
+    if (dateRange.to) {
+      list = list.filter(
+        (t) => new Date(t.createdAt) <= new Date(dateRange.to + "T23:59:59")
       );
     }
 
     return list;
-  }, [transactions, filter, search]);
+  }, [transactions, filter, search, dateRange]);
+
+  const COLS = ["Transaction", "Type", "Date", "Amount", "Status"];
 
   return (
-    <div className="relative z-10 flex flex-col gap-6">
-
-      {/* ── Page header ── */}
-      <div>
-        <div className="flex items-center gap-2 mb-1">
-          <span
-            className="text-xs font-semibold uppercase tracking-widest"
-            style={{ color: "#1e3a5f", letterSpacing: "0.12em" }}
+    <div className="space-y-6">
+      {/* Page header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1
+            className="text-2xl font-bold text-white"
+            style={{ letterSpacing: "-0.03em" }}
           >
-            Wallet
-          </span>
-          <div className="flex-1 h-px" style={{ background: "rgba(30,41,59,0.6)" }} />
+            Transactions
+          </h1>
+          <p className="text-sm mt-0.5" style={{ color: "#475569" }}>
+            Full history of your account activity
+          </p>
         </div>
-        <div className="flex items-end justify-between flex-wrap gap-3">
-          <div>
-            <h1 className="text-2xl font-bold text-white" style={{ letterSpacing: "-0.03em" }}>
-              Transactions
-            </h1>
-            <p className="text-sm mt-0.5" style={{ color: "#475569" }}>
-              Full history of your wallet activity
-            </p>
-          </div>
-          {!loading && (
-            <div
-              className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs"
-              style={{
-                background: "rgba(15,23,42,0.8)",
-                border: "1px solid rgba(51,65,85,0.5)",
-                color: "#475569",
-              }}
-            >
-              <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#22c55e", boxShadow: "0 0 5px #22c55e" }} />
-              {transactions.length} records loaded
-            </div>
-          )}
+        <div
+          className="text-xs px-3 py-1.5 rounded-lg"
+          style={{
+            background: "rgba(56,189,248,0.07)",
+            border: "1px solid rgba(56,189,248,0.15)",
+            color: "#38bdf8",
+          }}
+        >
+          {loading ? "Loading…" : `${transactions.length} total`}
         </div>
       </div>
 
-      {/* ── KPI stats ── */}
-      {loading ? (
-        <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-          {[...Array(4)].map((_, i) => (
-            <div
-              key={i}
-              className="rounded-2xl p-5 animate-pulse"
-              style={{
-                background: "rgba(15,23,42,0.7)",
-                border: "1px solid rgba(51,65,85,0.3)",
-                height: "108px",
-              }}
-            />
-          ))}
-        </div>
-      ) : (
-        <TransactionStats transactions={transactions} />
-      )}
+      {/* Stats */}
+      <TransactionStats transactions={transactions} />
 
-      {/* ── Filters + Search ── */}
+      {/* Filters */}
       <TransactionFilters
-        active={filter}
-        onFilterChange={setFilter}
         search={search}
-        onSearchChange={setSearch}
-        counts={counts}
+        filter={filter}
+        dateRange={dateRange}
+        onSearch={setSearch}
+        onFilter={setFilter}
+        onDateRange={setDateRange}
       />
 
-      {/* ── Table card ── */}
+      {/* Table */}
       <div
         className="rounded-2xl overflow-hidden"
         style={{
-          background: "linear-gradient(145deg, rgba(15,23,42,0.9), rgba(10,16,32,0.95))",
+          background:
+            "linear-gradient(145deg, rgba(15,23,42,0.9), rgba(10,16,32,0.95))",
           border: "1px solid rgba(148,163,184,0.08)",
-          boxShadow: "0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04)",
+          boxShadow:
+            "0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04)",
         }}
       >
-        {/* Table header bar */}
-        <div
-          className="px-5 py-4 flex items-center justify-between"
-          style={{ borderBottom: "1px solid rgba(51,65,85,0.35)" }}
-        >
-          <div className="flex items-center gap-2">
-            <div
-              className="w-1 h-4 rounded-full"
-              style={{ background: "linear-gradient(to bottom, #38bdf8, #38bdf866)" }}
-            />
-            <span className="text-sm font-bold text-white" style={{ letterSpacing: "-0.01em" }}>
-              {filter === "ALL" ? "All Transactions" : TYPE_CONFIG[filter]?.label}
-            </span>
-            {!loading && (
-              <span
-                className="text-xs font-semibold px-2 py-0.5 rounded-md"
-                style={{
-                  background: "rgba(56,189,248,0.08)",
-                  border: "1px solid rgba(56,189,248,0.15)",
-                  color: "#38bdf8",
-                }}
-              >
-                {displayed.length}
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Scrollable table */}
         <div className="overflow-x-auto">
-          <table className="w-full" style={{ borderCollapse: "separate", borderSpacing: 0 }}>
-
-            {/* Sticky header */}
+          <table className="w-full">
             <thead>
-              <tr style={{ position: "sticky", top: 0, zIndex: 10 }}>
-                {["Transaction", "Type", "Date & Time", "Amount", "Status"].map((col, i) => (
+              <tr>
+                {COLS.map((col, i) => (
                   <th
                     key={col}
-                    className="px-5 py-3 text-left text-xs font-semibold uppercase"
+                    className="px-5 py-3.5 text-xs font-semibold uppercase tracking-widest"
                     style={{
                       color: "#334155",
                       letterSpacing: "0.09em",
@@ -298,114 +245,113 @@ const Transactions = () => {
               {loading
                 ? [...Array(6)].map((_, i) => <SkeletonRow key={i} />)
                 : displayed.length === 0
-                  ? <EmptyState search={search} filter={filter} />
-                  : displayed.map((tx, idx) => {
-                      const cfg = TYPE_CONFIG[tx.type] || TYPE_CONFIG.DEPOSIT;
-                      const isEven = idx % 2 === 0;
-                      return (
-                        <tr
-                          key={tx.id}
-                          className="transition-all duration-150 group"
-                          style={{
-                            background: isEven
-                              ? "transparent"
-                              : "rgba(15,23,42,0.25)",
-                            borderBottom: "1px solid rgba(30,41,59,0.5)",
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.background = `${cfg.color}08`;
-                            e.currentTarget.style.borderColor = `${cfg.color}20`;
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.background = isEven ? "transparent" : "rgba(15,23,42,0.25)";
-                            e.currentTarget.style.borderColor = "rgba(30,41,59,0.5)";
-                          }}
-                        >
-                          {/* Transaction ID */}
-                          <td className="px-5 py-4">
-                            <div className="flex items-center gap-3">
-                              <div
-                                className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-                                style={{
-                                  background: cfg.bg,
-                                  border: `1px solid ${cfg.border}`,
-                                  color: cfg.color,
-                                }}
-                              >
-                                {cfg.icon}
-                              </div>
-                              <div>
-                                <p className="text-xs font-semibold text-white" style={{ letterSpacing: "-0.01em" }}>
-                                  TXN-{String(tx.id).padStart(6, "0")}
-                                </p>
-                                {(tx.receiverEmail || tx.senderEmail) && (
-                                  <p className="text-xs mt-0.5 truncate max-w-[140px]" style={{ color: "#334155" }}>
-                                    {tx.receiverEmail || tx.senderEmail}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          </td>
-
-                          {/* Type badge */}
-                          <td className="px-5 py-4">
-                            <span
-                              className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg w-fit"
+                ? <EmptyState search={search} filter={filter} />
+                : displayed.map((tx, idx) => {
+                    const cfg = TYPE_CONFIG[tx.type] || TYPE_CONFIG.DEPOSIT;
+                    const isEven = idx % 2 === 0;
+                    return (
+                      <tr
+                        key={tx.id}
+                        className="transition-all duration-150"
+                        style={{
+                          background: isEven ? "transparent" : "rgba(15,23,42,0.25)",
+                          borderBottom: "1px solid rgba(30,41,59,0.5)",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = `${cfg.color}08`;
+                          e.currentTarget.style.borderColor = `${cfg.color}20`;
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = isEven
+                            ? "transparent"
+                            : "rgba(15,23,42,0.25)";
+                          e.currentTarget.style.borderColor = "rgba(30,41,59,0.5)";
+                        }}
+                      >
+                        {/* ID */}
+                        <td className="px-5 py-4">
+                          <div className="flex items-center gap-3">
+                            <div
+                              className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
                               style={{
                                 background: cfg.bg,
                                 border: `1px solid ${cfg.border}`,
                                 color: cfg.color,
                               }}
                             >
-                              <span
-                                className="w-1 h-1 rounded-full flex-shrink-0"
-                                style={{ background: cfg.color, boxShadow: `0 0 4px ${cfg.color}` }}
-                              />
-                              {cfg.label}
-                            </span>
-                          </td>
+                              {cfg.icon}
+                            </div>
+                            <div>
+                              <p className="text-xs font-semibold text-white" style={{ letterSpacing: "-0.01em" }}>
+                                TXN-{String(tx.id).padStart(6, "0")}
+                              </p>
+                              {(tx.receiverEmail || tx.senderEmail) && (
+                                <p className="text-xs mt-0.5 truncate max-w-[140px]" style={{ color: "#334155" }}>
+                                  {tx.receiverEmail || tx.senderEmail}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </td>
 
-                          {/* Date */}
-                          <td className="px-5 py-4">
-                            <p className="text-xs font-medium" style={{ color: "#64748b" }}>
-                              {fmtDate(tx.createdAt)}
-                            </p>
-                            <p className="text-xs mt-0.5" style={{ color: "#1e3a5f" }}>
-                              {fmtTime(tx.createdAt)}
-                            </p>
-                          </td>
-
-                          {/* Amount */}
-                          <td className="px-5 py-4 text-right">
+                        {/* Type */}
+                        <td className="px-5 py-4">
+                          <span
+                            className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg w-fit"
+                            style={{
+                              background: cfg.bg,
+                              border: `1px solid ${cfg.border}`,
+                              color: cfg.color,
+                            }}
+                          >
                             <span
-                              className="text-sm font-bold"
-                              style={{ color: cfg.amountColor, letterSpacing: "-0.02em" }}
-                            >
-                              {cfg.sign}{fmt(tx.amount)}
-                            </span>
-                          </td>
+                              className="w-1 h-1 rounded-full flex-shrink-0"
+                              style={{ background: cfg.color, boxShadow: `0 0 4px ${cfg.color}` }}
+                            />
+                            {cfg.label}
+                          </span>
+                        </td>
 
-                          {/* Status */}
-                          <td className="px-5 py-4 text-right">
+                        {/* Date */}
+                        <td className="px-5 py-4">
+                          <p className="text-xs font-medium" style={{ color: "#64748b" }}>
+                            {fmtDate(tx.createdAt)}
+                          </p>
+                          <p className="text-xs mt-0.5" style={{ color: "#1e3a5f" }}>
+                            {fmtTime(tx.createdAt)}
+                          </p>
+                        </td>
+
+                        {/* Amount */}
+                        <td className="px-5 py-4 text-right">
+                          <span
+                            className="text-sm font-bold"
+                            style={{ color: cfg.amountColor, letterSpacing: "-0.02em" }}
+                          >
+                            {cfg.sign}{fmt(tx.amount)}
+                          </span>
+                        </td>
+
+                        {/* Status */}
+                        <td className="px-5 py-4 text-right">
+                          <span
+                            className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg"
+                            style={{
+                              background: "rgba(34,197,94,0.08)",
+                              border: "1px solid rgba(34,197,94,0.18)",
+                              color: "#22c55e",
+                            }}
+                          >
                             <span
-                              className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg"
-                              style={{
-                                background: "rgba(34,197,94,0.08)",
-                                border: "1px solid rgba(34,197,94,0.18)",
-                                color: "#22c55e",
-                              }}
-                            >
-                              <span
-                                className="w-1 h-1 rounded-full"
-                                style={{ background: "#22c55e", boxShadow: "0 0 4px #22c55e" }}
-                              />
-                              Completed
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })
-              }
+                              className="w-1 h-1 rounded-full"
+                              style={{ background: "#22c55e", boxShadow: "0 0 4px #22c55e" }}
+                            />
+                            Completed
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
             </tbody>
           </table>
         </div>

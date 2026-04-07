@@ -1,16 +1,18 @@
 import { useCurrency } from "../context/CurrencyContext";
-const StatCard = ({ label, amount, change, positive, icon, accent }) => (
+
+// ❌ FIXED: StatCard was displaying hardcoded "$12,840.00" and "$5,390.20" — now accepts real props
+// ❌ FIXED: Balance card was hardcoding the currency symbol as "$" — now respects CurrencyContext
+// ❌ FIXED: Mini bar chart is decorative but was static — kept intentionally as visual flair
+
+const StatCard = ({ label, amount, positive, icon, accent }) => (
   <div
     className="relative rounded-2xl p-5 overflow-hidden flex flex-col gap-3"
     style={{
-      background:
-        "linear-gradient(145deg, rgba(15,23,42,0.9), rgba(10,16,32,0.95))",
+      background: "linear-gradient(145deg, rgba(15,23,42,0.9), rgba(10,16,32,0.95))",
       border: "1px solid rgba(148,163,184,0.08)",
-      boxShadow:
-        "0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04)",
+      boxShadow: "0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04)",
     }}
   >
-    {/* Subtle corner glow */}
     <div
       className="absolute top-0 right-0 w-24 h-24 rounded-full pointer-events-none"
       style={{
@@ -21,12 +23,19 @@ const StatCard = ({ label, amount, change, positive, icon, accent }) => (
     />
 
     <div className="flex items-center justify-between">
-      <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#334155", letterSpacing: "0.1em" }}>
+      <p
+        className="text-xs font-semibold uppercase tracking-widest"
+        style={{ color: "#334155", letterSpacing: "0.1em" }}
+      >
         {label}
       </p>
       <div
         className="w-8 h-8 rounded-lg flex items-center justify-center"
-        style={{ background: `${accent}18`, border: `1px solid ${accent}30`, color: accent }}
+        style={{
+          background: `${accent}18`,
+          border: `1px solid ${accent}30`,
+          color: accent,
+        }}
       >
         {icon}
       </div>
@@ -56,22 +65,31 @@ const StatCard = ({ label, amount, change, positive, icon, accent }) => (
               <path d="M6 9l6 6 6-6" />
             </svg>
           )}
-          {change}
+          {positive ? "Income" : "Expense"}
         </span>
         <span className="text-xs" style={{ color: "#334155" }}>
-          vs last month
+          all time
         </span>
       </div>
     </div>
   </div>
 );
 
-const BalanceCard = ({ balance = 0 }) => {
+const BalanceCard = ({ balance = 0, totalReceived = 0, totalSpent = 0 }) => {
   const { currency } = useCurrency();
+
   const formattedBalance = Number(balance).toLocaleString("en-US", {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
+  const fmtStat = (n) =>
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 2,
+    }).format(n);
+
   return (
     <div className="space-y-4">
       {/* Primary Balance */}
@@ -121,40 +139,32 @@ const BalanceCard = ({ balance = 0 }) => {
                 Total Balance
               </p>
               <h2
-  className="text-4xl font-bold text-white"
-  style={{ letterSpacing: "-0.04em", lineHeight: 1 }}
->
-  ${formattedBalance}
-</h2>
+                className="text-4xl font-bold text-white"
+                style={{ letterSpacing: "-0.04em", lineHeight: 1 }}
+              >
+                {fmtStat(balance)}
+              </h2>
             </div>
-            <div
-              className="flex flex-col items-end gap-1"
-            >
+            <div className="flex flex-col items-end gap-1">
               <span
-                className="flex items-center gap-1 text-xs font-semibold rounded-lg px-2 py-1"
+                className="text-xs rounded-md px-2 py-0.5 font-medium"
                 style={{
-                  background: "rgba(34,197,94,0.12)",
-                  border: "1px solid rgba(34,197,94,0.2)",
+                  background: "rgba(34,197,94,0.1)",
+                  border: "1px solid rgba(34,197,94,0.18)",
                   color: "#22c55e",
                 }}
               >
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                  <path d="M18 15l-6-6-6 6" />
-                </svg>
-                +8.3%
-              </span>
-              <span className="text-xs" style={{ color: "#334155" }}>
-                this month
+                ● Active
               </span>
             </div>
           </div>
 
-          {/* Mini bar chart */}
+          {/* Mini bar chart — decorative */}
           <div className="flex items-end gap-1 h-10 mb-4">
             {[40, 65, 45, 80, 55, 90, 70, 85, 60, 95, 75, 100].map((h, i) => (
               <div
                 key={i}
-                className="flex-1 rounded-sm transition-all duration-300"
+                className="flex-1 rounded-sm"
                 style={{
                   height: `${h}%`,
                   background:
@@ -172,7 +182,10 @@ const BalanceCard = ({ balance = 0 }) => {
             <div className="flex items-center gap-2">
               <div
                 className="w-6 h-6 rounded-md flex items-center justify-center"
-                style={{ background: "rgba(56,189,248,0.12)", border: "1px solid rgba(56,189,248,0.2)" }}
+                style={{
+                  background: "rgba(56,189,248,0.12)",
+                  border: "1px solid rgba(56,189,248,0.2)",
+                }}
               >
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" strokeWidth="2">
                   <rect x="2" y="5" width="20" height="14" rx="2" />
@@ -183,26 +196,15 @@ const BalanceCard = ({ balance = 0 }) => {
                 •••• •••• •••• 4291
               </span>
             </div>
-            <span
-              className="text-xs rounded-md px-2 py-0.5 font-medium"
-              style={{
-                background: "rgba(34,197,94,0.1)",
-                border: "1px solid rgba(34,197,94,0.18)",
-                color: "#22c55e",
-              }}
-            >
-              ● Active
-            </span>
           </div>
         </div>
       </div>
 
-      {/* Stat Cards */}
+      {/* Stat Cards — now using real transaction data */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <StatCard
-          label="Monthly Income"
-          amount="$12,840.00"
-          change="+14.2%"
+          label="Total Received"
+          amount={fmtStat(totalReceived)}
           positive={true}
           accent="#22c55e"
           icon={
@@ -212,14 +214,14 @@ const BalanceCard = ({ balance = 0 }) => {
           }
         />
         <StatCard
-          label="Monthly Expenses"
-          amount="$5,390.20"
-          change="+3.1%"
+          label="Total Sent"
+          amount={fmtStat(totalSpent)}
           positive={false}
           accent="#f59e0b"
           icon={
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M20 12V22H4V12M22 7H2v5h20V7zM12 22V7M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
+              <line x1="22" y1="2" x2="11" y2="13" />
+              <polygon points="22 2 15 22 11 13 2 9 22 2" />
             </svg>
           }
         />
