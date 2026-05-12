@@ -15,8 +15,17 @@ const TYPE_CONFIG = {
     bg: "rgba(34,197,94,0.1)",
     border: "rgba(34,197,94,0.2)",
     icon: (
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-        <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="16" /><line x1="8" y1="12" x2="16" y2="12" />
+      <svg
+        width="13"
+        height="13"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.5"
+      >
+        <circle cx="12" cy="12" r="10" />
+        <line x1="12" y1="8" x2="12" y2="16" />
+        <line x1="8" y1="12" x2="16" y2="12" />
       </svg>
     ),
     sign: "+",
@@ -28,8 +37,16 @@ const TYPE_CONFIG = {
     bg: "rgba(248,113,113,0.1)",
     border: "rgba(248,113,113,0.2)",
     icon: (
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-        <line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
+      <svg
+        width="13"
+        height="13"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.5"
+      >
+        <line x1="22" y1="2" x2="11" y2="13" />
+        <polygon points="22 2 15 22 11 13 2 9 22 2" />
       </svg>
     ),
     sign: "-",
@@ -41,7 +58,14 @@ const TYPE_CONFIG = {
     bg: "rgba(52,211,153,0.1)",
     border: "rgba(52,211,153,0.2)",
     icon: (
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+      <svg
+        width="13"
+        height="13"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.5"
+      >
         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" />
       </svg>
     ),
@@ -76,12 +100,25 @@ const EmptyState = ({ search, filter }) => (
             border: "1px solid rgba(56,189,248,0.12)",
           }}
         >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" strokeWidth="1.5">
-            <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+          <svg
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#38bdf8"
+            strokeWidth="1.5"
+          >
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.35-4.35" />
           </svg>
         </div>
-        <p className="text-sm font-semibold text-white" style={{ letterSpacing: "-0.01em" }}>
-          {search || filter !== "ALL" ? "No matching transactions" : "No transactions yet"}
+        <p
+          className="text-sm font-semibold text-white"
+          style={{ letterSpacing: "-0.01em" }}
+        >
+          {search || filter !== "ALL"
+            ? "No matching transactions"
+            : "No transactions yet"}
         </p>
         <p className="text-xs" style={{ color: "#334155" }}>
           {search || filter !== "ALL"
@@ -121,7 +158,10 @@ const Transactions = () => {
 
   const fmtTime = (iso) => {
     const d = new Date(iso);
-    return d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+    return d.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
   useEffect(() => {
@@ -134,7 +174,7 @@ const Transactions = () => {
 
   const displayed = useMemo(() => {
     let list = [...transactions].sort(
-      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+      (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
     );
 
     if (filter !== "ALL") {
@@ -148,18 +188,18 @@ const Transactions = () => {
           String(t.id).includes(q) ||
           (t.receiverEmail || "").toLowerCase().includes(q) ||
           (t.senderEmail || "").toLowerCase().includes(q) ||
-          t.type.toLowerCase().includes(q)
+          t.type.toLowerCase().includes(q),
       );
     }
 
     if (dateRange.from) {
       list = list.filter(
-        (t) => new Date(t.createdAt) >= new Date(dateRange.from)
+        (t) => new Date(t.createdAt) >= new Date(dateRange.from),
       );
     }
     if (dateRange.to) {
       list = list.filter(
-        (t) => new Date(t.createdAt) <= new Date(dateRange.to + "T23:59:59")
+        (t) => new Date(t.createdAt) <= new Date(dateRange.to + "T23:59:59"),
       );
     }
 
@@ -200,12 +240,19 @@ const Transactions = () => {
 
       {/* Filters */}
       <TransactionFilters
+        active={filter}
+        onFilterChange={setFilter}
         search={search}
-        filter={filter}
-        dateRange={dateRange}
-        onSearch={setSearch}
-        onFilter={setFilter}
-        onDateRange={setDateRange}
+        onSearchChange={setSearch}
+        counts={{
+          ALL: transactions.length,
+          DEPOSIT: transactions.filter((t) => t.type === "DEPOSIT").length,
+          TRANSFER_SENT: transactions.filter((t) => t.type === "TRANSFER_SENT")
+            .length,
+          TRANSFER_RECEIVED: transactions.filter(
+            (t) => t.type === "TRANSFER_RECEIVED",
+          ).length,
+        }}
       />
 
       {/* Table */}
@@ -242,116 +289,143 @@ const Transactions = () => {
             </thead>
 
             <tbody>
-              {loading
-                ? [...Array(6)].map((_, i) => <SkeletonRow key={i} />)
-                : displayed.length === 0
-                ? <EmptyState search={search} filter={filter} />
-                : displayed.map((tx, idx) => {
-                    const cfg = TYPE_CONFIG[tx.type] || TYPE_CONFIG.DEPOSIT;
-                    const isEven = idx % 2 === 0;
-                    return (
-                      <tr
-                        key={tx.id}
-                        className="transition-all duration-150"
-                        style={{
-                          background: isEven ? "transparent" : "rgba(15,23,42,0.25)",
-                          borderBottom: "1px solid rgba(30,41,59,0.5)",
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.background = `${cfg.color}08`;
-                          e.currentTarget.style.borderColor = `${cfg.color}20`;
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.background = isEven
-                            ? "transparent"
-                            : "rgba(15,23,42,0.25)";
-                          e.currentTarget.style.borderColor = "rgba(30,41,59,0.5)";
-                        }}
-                      >
-                        {/* ID */}
-                        <td className="px-5 py-4">
-                          <div className="flex items-center gap-3">
-                            <div
-                              className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-                              style={{
-                                background: cfg.bg,
-                                border: `1px solid ${cfg.border}`,
-                                color: cfg.color,
-                              }}
-                            >
-                              {cfg.icon}
-                            </div>
-                            <div>
-                              <p className="text-xs font-semibold text-white" style={{ letterSpacing: "-0.01em" }}>
-                                TXN-{String(tx.id).padStart(6, "0")}
-                              </p>
-                              {(tx.receiverEmail || tx.senderEmail) && (
-                                <p className="text-xs mt-0.5 truncate max-w-[140px]" style={{ color: "#334155" }}>
-                                  {tx.receiverEmail || tx.senderEmail}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* Type */}
-                        <td className="px-5 py-4">
-                          <span
-                            className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg w-fit"
+              {loading ? (
+                [...Array(6)].map((_, i) => <SkeletonRow key={i} />)
+              ) : displayed.length === 0 ? (
+                <EmptyState search={search} filter={filter} />
+              ) : (
+                displayed.map((tx, idx) => {
+                  const cfg = TYPE_CONFIG[tx.type] || TYPE_CONFIG.DEPOSIT;
+                  const isEven = idx % 2 === 0;
+                  return (
+                    <tr
+                      key={tx.id}
+                      className="transition-all duration-150"
+                      style={{
+                        background: isEven
+                          ? "transparent"
+                          : "rgba(15,23,42,0.25)",
+                        borderBottom: "1px solid rgba(30,41,59,0.5)",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = `${cfg.color}08`;
+                        e.currentTarget.style.borderColor = `${cfg.color}20`;
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = isEven
+                          ? "transparent"
+                          : "rgba(15,23,42,0.25)";
+                        e.currentTarget.style.borderColor =
+                          "rgba(30,41,59,0.5)";
+                      }}
+                    >
+                      {/* ID */}
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
                             style={{
                               background: cfg.bg,
                               border: `1px solid ${cfg.border}`,
                               color: cfg.color,
                             }}
                           >
-                            <span
-                              className="w-1 h-1 rounded-full flex-shrink-0"
-                              style={{ background: cfg.color, boxShadow: `0 0 4px ${cfg.color}` }}
-                            />
-                            {cfg.label}
-                          </span>
-                        </td>
+                            {cfg.icon}
+                          </div>
+                          <div>
+                            <p
+                              className="text-xs font-semibold text-white"
+                              style={{ letterSpacing: "-0.01em" }}
+                            >
+                              TXN-{String(tx.id).padStart(6, "0")}
+                            </p>
+                            {(tx.receiverEmail || tx.senderEmail) && (
+                              <p
+                                className="text-xs mt-0.5 truncate max-w-[140px]"
+                                style={{ color: "#334155" }}
+                              >
+                                {tx.receiverEmail || tx.senderEmail}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </td>
 
-                        {/* Date */}
-                        <td className="px-5 py-4">
-                          <p className="text-xs font-medium" style={{ color: "#64748b" }}>
-                            {fmtDate(tx.createdAt)}
-                          </p>
-                          <p className="text-xs mt-0.5" style={{ color: "#1e3a5f" }}>
-                            {fmtTime(tx.createdAt)}
-                          </p>
-                        </td>
-
-                        {/* Amount */}
-                        <td className="px-5 py-4 text-right">
+                      {/* Type */}
+                      <td className="px-5 py-4">
+                        <span
+                          className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg w-fit"
+                          style={{
+                            background: cfg.bg,
+                            border: `1px solid ${cfg.border}`,
+                            color: cfg.color,
+                          }}
+                        >
                           <span
-                            className="text-sm font-bold"
-                            style={{ color: cfg.amountColor, letterSpacing: "-0.02em" }}
-                          >
-                            {cfg.sign}{fmt(tx.amount)}
-                          </span>
-                        </td>
-
-                        {/* Status */}
-                        <td className="px-5 py-4 text-right">
-                          <span
-                            className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg"
+                            className="w-1 h-1 rounded-full flex-shrink-0"
                             style={{
-                              background: "rgba(34,197,94,0.08)",
-                              border: "1px solid rgba(34,197,94,0.18)",
-                              color: "#22c55e",
+                              background: cfg.color,
+                              boxShadow: `0 0 4px ${cfg.color}`,
                             }}
-                          >
-                            <span
-                              className="w-1 h-1 rounded-full"
-                              style={{ background: "#22c55e", boxShadow: "0 0 4px #22c55e" }}
-                            />
-                            Completed
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                          />
+                          {cfg.label}
+                        </span>
+                      </td>
+
+                      {/* Date */}
+                      <td className="px-5 py-4">
+                        <p
+                          className="text-xs font-medium"
+                          style={{ color: "#64748b" }}
+                        >
+                          {fmtDate(tx.createdAt)}
+                        </p>
+                        <p
+                          className="text-xs mt-0.5"
+                          style={{ color: "#1e3a5f" }}
+                        >
+                          {fmtTime(tx.createdAt)}
+                        </p>
+                      </td>
+
+                      {/* Amount */}
+                      <td className="px-5 py-4 text-right">
+                        <span
+                          className="text-sm font-bold"
+                          style={{
+                            color: cfg.amountColor,
+                            letterSpacing: "-0.02em",
+                          }}
+                        >
+                          {cfg.sign}
+                          {fmt(tx.amount)}
+                        </span>
+                      </td>
+
+                      {/* Status */}
+                      <td className="px-5 py-4 text-right">
+                        <span
+                          className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg"
+                          style={{
+                            background: "rgba(34,197,94,0.08)",
+                            border: "1px solid rgba(34,197,94,0.18)",
+                            color: "#22c55e",
+                          }}
+                        >
+                          <span
+                            className="w-1 h-1 rounded-full"
+                            style={{
+                              background: "#22c55e",
+                              boxShadow: "0 0 4px #22c55e",
+                            }}
+                          />
+                          Completed
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
@@ -363,8 +437,10 @@ const Transactions = () => {
             style={{ borderTop: "1px solid rgba(30,41,59,0.5)" }}
           >
             <p className="text-xs" style={{ color: "#1e3a5f" }}>
-              Showing <span style={{ color: "#334155" }}>{displayed.length}</span> of{" "}
-              <span style={{ color: "#334155" }}>{transactions.length}</span> transactions
+              Showing{" "}
+              <span style={{ color: "#334155" }}>{displayed.length}</span> of{" "}
+              <span style={{ color: "#334155" }}>{transactions.length}</span>{" "}
+              transactions
             </p>
             <p className="text-xs" style={{ color: "#1e3a5f" }}>
               Sorted: newest first

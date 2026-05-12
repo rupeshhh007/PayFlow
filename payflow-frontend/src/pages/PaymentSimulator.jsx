@@ -1,16 +1,28 @@
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { simulatePayment } from "../api/paymentApi";
+import toast from "react-hot-toast";
+import { useCurrency } from "../context/CurrencyContext";
 const PaymentSimulator = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const searchParams = new URLSearchParams(location.search);
-  const amount = parseFloat(searchParams.get("amount") || "0");
+  const rawAmount = parseFloat(searchParams.get("amount"));
+
+const amount =
+  Number.isFinite(rawAmount) &&
+  rawAmount > 0 &&
+  rawAmount <= 100000
+    ? rawAmount
+    : null;
+
 
   const [activeTab, setActiveTab] = useState("upi");
   const [status, setStatus] = useState("idle"); // idle, processing, success
   const [orderId, setOrderId] = useState("");
   const [showToast, setShowToast] = useState(false);
+
+  const { currency } = useCurrency();
 
   // Form states
   const [upiId, setUpiId] = useState("");

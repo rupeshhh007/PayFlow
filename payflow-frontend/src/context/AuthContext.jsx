@@ -1,6 +1,14 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+} from "react";
+
 import { useNavigate } from "react-router-dom";
 import API from "../api/api";
+import toast from "react-hot-toast";
 
 const AuthContext = createContext();
 
@@ -78,16 +86,16 @@ export const AuthProvider = ({ children }) => {
   };
 
   // ---------------- LOGOUT ----------------
-  const logout = () => {
-    localStorage.removeItem("token");
+ const logout = useCallback(() => {
+  localStorage.removeItem("token");
 
-    setUser(null);
-    setToken(null);
+  setUser(null);
+  setToken(null);
 
-    delete API.defaults.headers.common["Authorization"];
+  delete API.defaults.headers.common["Authorization"];
 
-    navigate("/login", { replace: true });
-  };
+  navigate("/login", { replace: true });
+}, [navigate]);
 
   // ---------------- AUTO LOGOUT ON EXPIRY ----------------
   useEffect(() => {
@@ -106,7 +114,7 @@ export const AuthProvider = ({ children }) => {
     }, timeout);
 
     return () => clearTimeout(timer);
-  }, [user]);
+  }, [user , logout]);
 
   return (
     <AuthContext.Provider
