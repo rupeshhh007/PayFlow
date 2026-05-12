@@ -39,20 +39,13 @@ public class JwtFilter extends OncePerRequestFilter {
             FilterChain filterChain)
             throws ServletException, IOException {
 
-        System.out.println("➡️ JWT FILTER HIT: " + request.getMethod()
-                + " " + request.getServletPath());
-
         String header = request.getHeader("Authorization");
 
         if (header != null && header.startsWith("Bearer ")) {
 
-            System.out.println("✅ Authorization header found");
-
             String token = header.substring(7);
 
             if (jwtUtil.validateToken(token)) {
-
-                System.out.println("✅ TOKEN VALID");
 
                 String email = jwtUtil.extractEmail(token);
 
@@ -72,12 +65,8 @@ public class JwtFilter extends OncePerRequestFilter {
                 SecurityContextHolder
                         .getContext()
                         .setAuthentication(auth);
-            } else {
-                System.out.println("❌ TOKEN INVALID");
             }
 
-        } else {
-            System.out.println("❌ NO AUTH HEADER");
         }
 
         filterChain.doFilter(request, response);

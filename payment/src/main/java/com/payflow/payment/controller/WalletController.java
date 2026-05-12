@@ -2,58 +2,52 @@ package com.payflow.payment.controller;
 
 import com.payflow.payment.dto.BalanceResponse;
 import com.payflow.payment.dto.DepositRequest;
+import com.payflow.payment.dto.TransferRequest;
 import com.payflow.payment.service.WalletService;
-import org.springframework.beans.factory.annotation.Autowired;
+
+import jakarta.validation.Valid;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-import com.payflow.payment.dto.TransferRequest;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/wallet")
 public class WalletController {
 
-    @Autowired
-    private WalletService walletService;
+    private final WalletService walletService;
+
+    public WalletController(WalletService walletService) {
+        this.walletService = walletService;
+    }
 
     @GetMapping("/balance")
-    public BalanceResponse getBalance(Authentication authentication) {
-
+    public ResponseEntity<BalanceResponse> getBalance(Authentication authentication) {
         String email = authentication.getName();
-
-        Double balance =
-                walletService.getBalance(email);
-
-        return new BalanceResponse(balance);
+        Double balance = walletService.getBalance(email);
+        return ResponseEntity.ok(new BalanceResponse(balance));
     }
+
     @PostMapping("/deposit")
-    public BalanceResponse deposit(
-            @RequestBody DepositRequest request,
+    public ResponseEntity<BalanceResponse> deposit(
+            @Valid @RequestBody DepositRequest request,
             Authentication authentication) {
-
         String email = authentication.getName();
-
-        Double balance =
-                walletService.deposit(email, request.getAmount());
-
-        return new BalanceResponse(balance);
+        Double balance = walletService.deposit(email, request.getAmount());
+        return ResponseEntity.ok(new BalanceResponse(balance));
     }
 
     @PostMapping("/transfer")
-    public String transfer(
-            @RequestBody TransferRequest request,
+    public ResponseEntity<?> transfer(
+            @Valid @RequestBody TransferRequest request,
             Authentication authentication) {
-
-        System.out.println("🔥 TRANSFER API HIT");
-
-        String senderEmail = authentication.getName();
-
-        walletService.transfer(
-                senderEmail,
-                request.getReceiverEmail(),
-                request.getAmount()
-        );
-
-        return "Transfer successful";
+        try {
+            String senderEmail = authentication.getName();
+            walletService.transfer(senderEmail, request.getReceiverEmail(), request.getAmount());
+            return ResponseEntity.ok(Map.of("message", "Transfer successful"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
-
 }

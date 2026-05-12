@@ -7,8 +7,11 @@ import com.payflow.payment.repository.TransactionRepository;
 import com.payflow.payment.repository.UserRepository;
 import com.payflow.payment.repository.WalletRepository;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class WalletService {
@@ -21,101 +24,75 @@ public class WalletService {
             WalletRepository walletRepository,
             UserRepository userRepository,
             TransactionRepository transactionRepository) {
-
         this.walletRepository = walletRepository;
         this.userRepository = userRepository;
         this.transactionRepository = transactionRepository;
     }
 
     public Double getBalance(String email) {
-
         User user = userRepository.findByEmail(email)
-                .orElseThrow();
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "User not found: " + email));
 
         Wallet wallet = walletRepository.findByUser(user)
-                .orElseThrow();
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Wallet not found for user: " + email));
 
         return wallet.getBalance();
     }
 
-    // ✅ DEPOSIT MONEY
     @Transactional
     public Double deposit(String email, Double amount) {
-
         User user = userRepository.findByEmail(email)
-                .orElseThrow();
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "User not found: " + email));
 
         Wallet wallet = walletRepository.findByUser(user)
-                .orElseThrow();
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Wallet not found for user: " + email));
 
-        // update balance
         wallet.setBalance(wallet.getBalance() + amount);
         walletRepository.save(wallet);
 
-        // record transaction
-        Transaction tx =
-                new Transaction(amount, "DEPOSIT", user);
-
+        Transaction tx = new Transaction(amount, "DEPOSIT", user);
         transactionRepository.save(tx);
 
         return wallet.getBalance();
     }
-    // ✅ TRANSFER MONEY
-    @Transactional
-    public void transfer(
-            String senderEmail,
-            String receiverEmail,
-            Double amount) {
 
+    @Transactional(isolation = Isolation.SERIALIZABLE)
+    public void transfer(String senderEmail, String receiverEmail, Double amount) {
         if (amount == null || amount <= 0) {
-            throw new RuntimeException("Invalid amount");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Amount must be positive");
         }
 
-        // sender
-        User sender = userRepository
-                .findByEmail(senderEmail)
-                .orElseThrow();
+        User sender = userRepository.findByEmail(senderEmail)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Sender not found: " + senderEmail));
 
-        Wallet senderWallet =
-                walletRepository.findByUser(sender)
-                        .orElseThrow();
+        Wallet senderWallet = walletRepository.findByUser(sender)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Sender wallet not found"));
 
-        // receiver
-        User receiver = userRepository
-                .findByEmail(receiverEmail)
-                .orElseThrow();
+        User receiver = userRepository.findByEmail(receiverEmail)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Receiver not found: " + receiverEmail));
 
-        Wallet receiverWallet =
-                walletRepository.findByUser(receiver)
-                        .orElseThrow();
+        Wallet receiverWallet = walletRepository.findByUser(receiver)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Receiver wallet not found"));
 
-        // balance check
         if (senderWallet.getBalance() < amount) {
-            throw new RuntimeException("Insufficient balance");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Insufficient balance");
         }
 
-        // update balances
-        senderWallet.setBalance(
-                senderWallet.getBalance() - amount
-        );
-
-        receiverWallet.setBalance(
-                receiverWallet.getBalance() + amount
-        );
+        senderWallet.setBalance(senderWallet.getBalance() - amount);
+        receiverWallet.setBalance(receiverWallet.getBalance() + amount);
 
         walletRepository.save(senderWallet);
         walletRepository.save(receiverWallet);
 
-        // sender transaction
-        Transaction debit =
-                new Transaction(amount, "TRANSFER_SENT", sender);
-
-        transactionRepository.save(debit);
-
-        // receiver transaction
-        Transaction credit =
-                new Transaction(amount, "TRANSFER_RECEIVED", receiver);
-
-        transactionRepository.save(credit);
+        transactionRepository.save(new Transaction(amount, "TRANSFER_SENT", sender));
+        transactionRepository.save(new Transaction(amount, "TRANSFER_RECEIVED", receiver));
     }
 }

@@ -147,6 +147,11 @@ const Dashboard = () => {
               Here's what's happening with your account today.
             </p>
           </div>
+          <button
+  onClick={() => navigate("/recurring")}
+>
+  Recurring
+</button>
 
           <div className="text-xs text-slate-400">
             {currentDate}

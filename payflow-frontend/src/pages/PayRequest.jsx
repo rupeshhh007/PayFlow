@@ -47,7 +47,7 @@ const PayRequest = () => {
       setStatus("success");
       setTimeout(() => navigate("/dashboard"), 2000);
     } catch (error) {
-      console.error("Payment failed:", error);
+      console.error("Payment failed:", error.response?.data);
       const msg =
         error?.response?.data?.message ||
         "Payment failed. Please try again.";

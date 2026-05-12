@@ -1,6 +1,8 @@
 package com.payflow.payment.model;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.CreationTimestamp;
+
 import java.time.LocalDateTime;
 
 @Entity
@@ -21,57 +23,21 @@ public class PaymentRequest {
     @JoinColumn(name = "requester_id")
     private User requester;
 
-    private LocalDateTime createdAt = LocalDateTime.now();
+    @CreationTimestamp
+    @Column(updatable = false)
+    private LocalDateTime createdAt;
 
-    // ===== GETTERS =====
+    public String getId() { return id; }
+    public Double getAmount() { return amount; }
+    public String getNote() { return note; }
+    public String getStatus() { return status; }
+    public User getRequester() { return requester; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
 
-    public String getId() {
-        return id;
-    }
-
-    public Double getAmount() {
-        return amount;
-    }
-
-    public String getNote() {
-        return note;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public User getRequester() {
-        return requester;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    // ===== SETTERS =====
-
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public void setAmount(Double amount) {
-        this.amount = amount;
-    }
-
-    public void setNote(String note) {
-        this.note = note;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    public void setRequester(User requester) {
-        this.requester = requester;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
+    public void setId(String id) { this.id = id; }
+    public void setAmount(Double amount) { this.amount = amount; }
+    public void setNote(String note) { this.note = note; }
+    public void setStatus(String status) { this.status = status; }
+    public void setRequester(User requester) { this.requester = requester; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }

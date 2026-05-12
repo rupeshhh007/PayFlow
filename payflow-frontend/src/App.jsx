@@ -11,6 +11,7 @@ import AppLayout from "./layouts/AppLayout";
 import PaymentSimulator from "./pages/PaymentSimulator";
 import { useAuth } from "./context/AuthContext";
 import PayRequest from "./pages/PayRequest";
+import RecurringPayment from "./pages/RecurringPayment";
 
 // ❌ FIXED: /payment was double-wrapped — it's already inside the outer ProtectedRoute layout
 // ❌ FIXED: Root path "/" had no handler — users who typed "/" got redirected to /login
@@ -77,6 +78,10 @@ function App() {
 
       {/* Pay request page — publicly accessible via payment link */}
       <Route path="/pay" element={<PayRequest />} />
+      <Route
+  path="/recurring"
+  element={<RecurringPayment />}
+/>
 
       {/* Protected Layout */}
       <Route
