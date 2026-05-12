@@ -14,7 +14,7 @@ const decodeEmailFromToken = () => {
     return null;
   }
 };
-const { logout } = useAuth();
+
 
 const getInitials = (email = "") =>
   email.split("@")[0].slice(0, 2).toUpperCase();
@@ -202,6 +202,7 @@ const LogoutModal = ({ onConfirm, onCancel }) => (
 
 // ── Main Component ────────────────────────────────────────────────────────────
 const Settings = () => {
+  const { logout } = useAuth();
   const navigate = useNavigate();
   const email = useMemo(() => decodeEmailFromToken() || "user@payflow.io", []);
 
