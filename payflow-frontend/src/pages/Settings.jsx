@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCurrency } from "../context/CurrencyContext";
+import { useAuth } from "../context/AuthContext";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const decodeEmailFromToken = () => {
@@ -13,6 +14,7 @@ const decodeEmailFromToken = () => {
     return null;
   }
 };
+const { logout } = useAuth();
 
 const getInitials = (email = "") =>
   email.split("@")[0].slice(0, 2).toUpperCase();
@@ -209,9 +211,8 @@ const Settings = () => {
   const [passwordChanged, setPasswordChanged] = useState(false);
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    navigate("/login", { replace: true });
-  };
+  logout();
+};
 
   // ✅ No Navbar, no Sidebar, no ml-56, no pt-14, no min-h-screen
   // AppLayout already provides all of that via <Outlet />

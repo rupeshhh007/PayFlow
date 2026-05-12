@@ -42,7 +42,7 @@ const amount =
   const formatMoney = (val) =>
     new Intl.NumberFormat("en-US", {
       style: "currency",
-      currency: "USD", // Adjust if your app uses a different default
+      currency: currency // Adjust if your app uses a different default
     }).format(val);
 
   const handlePayment = async (e) => {
@@ -68,7 +68,28 @@ const amount =
       }
     }, 2000);
   };
+if (!amount) {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-[#0a1020] text-white">
+      <div className="bg-slate-900 border border-slate-700 rounded-2xl p-8 text-center">
+        <h2 className="text-xl font-bold mb-2">
+          Invalid Payment Request
+        </h2>
 
+        <p className="text-slate-400 mb-6">
+          The payment amount is invalid.
+        </p>
+
+        <button
+          onClick={() => navigate("/dashboard")}
+          className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 transition"
+        >
+          Return to Dashboard
+        </button>
+      </div>
+    </div>
+  );
+}
   return (
     <div className="min-h-screen relative flex items-center justify-center p-4 bg-[#0a1020] overflow-hidden font-sans">
       {/* Ambient glow matching dashboard */}
