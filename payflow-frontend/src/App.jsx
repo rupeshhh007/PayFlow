@@ -78,10 +78,6 @@ function App() {
 
       {/* Pay request page — publicly accessible via payment link */}
       <Route path="/pay" element={<PayRequest />} />
-      <Route
-  path="/recurring"
-  element={<RecurringPayment />}
-/>
 
       {/* Protected Layout */}
       <Route
@@ -98,6 +94,7 @@ function App() {
         <Route path="/settings" element={<Settings />} />
         {/* ❌ FIXED: /payment no longer double-wrapped in ProtectedRoute */}
         <Route path="/payment" element={<PaymentSimulator />} />
+        <Route path="/recurring" element={<RecurringPayment />} />
       </Route>
 
       {/* Fallback */}
