@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 
 import BalanceCard from "../components/BalanceCard";
@@ -11,7 +11,6 @@ import { useCurrency } from "../context/CurrencyContext";
 import { useAuth } from "../context/AuthContext";
 import toast from "react-hot-toast";
 
-// 🔥 RESTORED BEAUTIFUL QUICK ACTIONS
 const QUICK_ACTIONS = [
   {
     id: "send",
@@ -49,6 +48,19 @@ const QUICK_ACTIONS = [
       </svg>
     ),
   },
+  {
+    id: "recurring",
+    label: "Recurring",
+    description: "Schedule payments",
+    accent: "#8b5cf6",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+        <path d="M21 3v6h-6" />
+        <path d="M12 7v5l3 2" />
+      </svg>
+    ),
+  },
 ];
 
 const Dashboard = () => {
@@ -65,7 +77,7 @@ const Dashboard = () => {
   const [showDeposit, setShowDeposit] = useState(false);
 
   // ---------------- LOAD DATA ----------------
-  const loadDashboard = async () => {
+  const loadDashboard = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -76,12 +88,12 @@ const Dashboard = () => {
 
       setBalance(Number(balRes.data.balance || 0));
       setTransactions(txRes.data || []);
-    } catch (err) {
+    } catch {
       toast.error("Failed to load dashboard");
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // ---------------- INIT ----------------
   useEffect(() => {
@@ -91,7 +103,7 @@ const Dashboard = () => {
     }
 
     if (user) loadDashboard();
-  }, [user, authLoading]);
+  }, [user, authLoading, navigate, loadDashboard]);
 
   // ---------------- DERIVED DATA ----------------
   const { totalSpent, totalReceived, deposits } = useMemo(() => {
@@ -138,7 +150,7 @@ const Dashboard = () => {
       <div className="px-6 py-7 max-w-6xl">
 
         {/* Header */}
-        <div className="mb-7 flex justify-between items-end">
+        <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-white">
               {getGreeting()}
@@ -147,13 +159,20 @@ const Dashboard = () => {
               Here's what's happening with your account today.
             </p>
           </div>
-          <button
-  onClick={() => navigate("/recurring")}
->
-  Recurring
-</button>
 
-          <div className="text-xs text-slate-400">
+          <div
+            className="flex w-fit items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold"
+            style={{
+              background: "rgba(15,23,42,0.72)",
+              border: "1px solid rgba(51,65,85,0.55)",
+              color: "#94a3b8",
+              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.03)",
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" strokeWidth="2">
+              <rect x="3" y="4" width="18" height="18" rx="2" />
+              <path d="M16 2v4M8 2v4M3 10h18" />
+            </svg>
             {currentDate}
           </div>
         </div>
@@ -165,7 +184,6 @@ const Dashboard = () => {
           <div className="flex flex-col gap-6">
             <BalanceCard balance={balance} transactions={transactions} />
 
-            {/* 🔥 PREMIUM QUICK ACTIONS */}
             <div
               className="rounded-2xl p-5"
               style={{
@@ -176,9 +194,21 @@ const Dashboard = () => {
                   "0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04)",
               }}
             >
-              <h3 className="text-sm font-bold text-white mb-4">
-                Quick Actions
-              </h3>
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="text-sm font-bold text-white">
+                  Quick Actions
+                </h3>
+                <span
+                  className="rounded-lg px-2 py-1 text-[11px] font-semibold"
+                  style={{
+                    background: "rgba(56,189,248,0.08)",
+                    color: "#38bdf8",
+                    border: "1px solid rgba(56,189,248,0.12)",
+                  }}
+                >
+                  Payments
+                </span>
+              </div>
 
               <div className="flex flex-col gap-2.5">
                 {QUICK_ACTIONS.map((action) => (
@@ -188,8 +218,9 @@ const Dashboard = () => {
                       if (action.id === "send") setShowSendMoney(true);
                       if (action.id === "add") setShowDeposit(true);
                       if (action.id === "request") setShowRequestMoney(true);
+                      if (action.id === "recurring") navigate("/recurring");
                     }}
-                    className="flex items-center gap-3.5 rounded-xl px-4 py-3 text-left w-full transition-all duration-200"
+                    className="flex w-full items-center gap-3.5 rounded-xl px-4 py-3 text-left transition-all duration-200"
                     style={{
                       background: "rgba(15,23,42,0.6)",
                       border: "1px solid rgba(51,65,85,0.4)",
@@ -248,17 +279,136 @@ const Dashboard = () => {
             {/* KPIs */}
             <div className="grid grid-cols-3 gap-4">
               {[
-                { label: "Deposited", value: formatMoney(deposits), color: "text-green-400" },
-                { label: "Sent", value: formatMoney(totalSpent), color: "text-yellow-400" },
-                { label: "Received", value: formatMoney(totalReceived), color: "text-blue-400" },
+                { label: "Deposited", value: formatMoney(deposits), color: "#22c55e" },
+                { label: "Sent", value: formatMoney(totalSpent), color: "#f59e0b" },
+                { label: "Received", value: formatMoney(totalReceived), color: "#38bdf8" },
               ].map((kpi) => (
-                <div key={kpi.label} className="bg-slate-900 p-4 rounded-xl">
+                <div
+                  key={kpi.label}
+                  className="rounded-2xl p-4"
+                  style={{
+                    background: "linear-gradient(145deg, rgba(15,23,42,0.86), rgba(10,16,32,0.94))",
+                    border: "1px solid rgba(148,163,184,0.08)",
+                    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.035)",
+                  }}
+                >
                   <p className="text-xs text-slate-400">{kpi.label}</p>
-                  <p className={`text-xl font-bold ${kpi.color}`}>
+                  <p
+                    className="text-xl font-bold"
+                    style={{ color: kpi.color, letterSpacing: "-0.02em" }}
+                  >
                     {kpi.value}
                   </p>
                 </div>
               ))}
+            </div>
+
+            {/* Recurring payments */}
+            <div
+              className="relative overflow-hidden rounded-2xl p-5"
+              style={{
+                background:
+                  "linear-gradient(145deg, rgba(15,23,42,0.92), rgba(10,16,32,0.98))",
+                border: "1px solid rgba(139,92,246,0.18)",
+                boxShadow:
+                  "0 8px 30px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.04)",
+              }}
+            >
+              <div
+                className="absolute left-5 right-5 top-0 h-px"
+                style={{
+                  background:
+                    "linear-gradient(90deg, transparent, rgba(139,92,246,0.7), rgba(56,189,248,0.35), transparent)",
+                }}
+              />
+
+              <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex items-start gap-4">
+                  <div
+                    className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl"
+                    style={{
+                      background: "rgba(139,92,246,0.12)",
+                      border: "1px solid rgba(139,92,246,0.28)",
+                      color: "#a78bfa",
+                    }}
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+                      <path d="M21 3v6h-6" />
+                      <path d="M12 7v5l3 2" />
+                    </svg>
+                  </div>
+
+                  <div>
+                    <div className="mb-1 flex flex-wrap items-center gap-2">
+                      <h3 className="text-base font-bold text-white">
+                        Recurring payments
+                      </h3>
+                      <span
+                        className="rounded-md px-2 py-0.5 text-[11px] font-semibold"
+                        style={{
+                          background: "rgba(34,197,94,0.1)",
+                          border: "1px solid rgba(34,197,94,0.18)",
+                          color: "#22c55e",
+                        }}
+                      >
+                        Ready
+                      </span>
+                    </div>
+                    <p className="max-w-md text-sm text-slate-400">
+                      Schedule daily, weekly, or monthly transfers from one clean place.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => navigate("/recurring")}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-200 lg:w-auto"
+                  style={{
+                    background: "rgba(255,255,255,0.96)",
+                    color: "#0f172a",
+                    border: "1px solid rgba(255,255,255,0.85)",
+                    boxShadow: "0 10px 24px rgba(0,0,0,0.25)",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = "translateY(-1px)";
+                    e.currentTarget.style.boxShadow = "0 14px 30px rgba(0,0,0,0.32)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = "translateY(0)";
+                    e.currentTarget.style.boxShadow = "0 10px 24px rgba(0,0,0,0.25)";
+                  }}
+                >
+                  Create schedule
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M5 12h14M12 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="relative z-10 mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                {[
+                  { label: "Frequency", value: "Daily to monthly" },
+                  { label: "Status", value: "Protected" },
+                  { label: "Next step", value: "Add recipient" },
+                ].map((item) => (
+                  <div
+                    key={item.label}
+                    className="rounded-xl px-3 py-3"
+                    style={{
+                      background: "rgba(15,23,42,0.66)",
+                      border: "1px solid rgba(51,65,85,0.48)",
+                    }}
+                  >
+                    <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-500">
+                      {item.label}
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-slate-200">
+                      {item.value}
+                    </p>
+                  </div>
+                ))}
+              </div>
             </div>
 
             {/* Transactions */}
