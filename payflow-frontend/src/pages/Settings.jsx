@@ -1,7 +1,7 @@
-import { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState, useMemo } from "react";
 import { useCurrency } from "../context/CurrencyContext";
 import { useAuth } from "../context/AuthContext";
+import { getStoredPlan, PLAN_UPDATED_EVENT } from "../utils/plan";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const decodeEmailFromToken = () => {
@@ -203,13 +203,27 @@ const LogoutModal = ({ onConfirm, onCancel }) => (
 // ── Main Component ────────────────────────────────────────────────────────────
 const Settings = () => {
   const { logout } = useAuth();
-  const navigate = useNavigate();
   const email = useMemo(() => decodeEmailFromToken() || "user@payflow.io", []);
 
   const { currency, setCurrency } = useCurrency();
   const [notifications, setNotifications] = useState(true);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [passwordChanged, setPasswordChanged] = useState(false);
+  const [plan, setPlan] = useState(() => getStoredPlan());
+
+  const isPro = plan.tier === "pro";
+
+  useEffect(() => {
+    const syncPlan = () => setPlan(getStoredPlan());
+
+    window.addEventListener(PLAN_UPDATED_EVENT, syncPlan);
+    window.addEventListener("storage", syncPlan);
+
+    return () => {
+      window.removeEventListener(PLAN_UPDATED_EVENT, syncPlan);
+      window.removeEventListener("storage", syncPlan);
+    };
+  }, []);
 
   const handleLogout = () => {
   logout();
@@ -306,12 +320,16 @@ const Settings = () => {
           <span
             className="text-xs font-semibold px-3 py-1.5 rounded-lg"
             style={{
-              background: "rgba(56,189,248,0.08)",
-              border: "1px solid rgba(56,189,248,0.18)",
-              color: "#38bdf8",
+              background: isPro
+                ? "rgba(34,197,94,0.1)"
+                : "rgba(56,189,248,0.08)",
+              border: isPro
+                ? "1px solid rgba(34,197,94,0.2)"
+                : "1px solid rgba(56,189,248,0.18)",
+              color: isPro ? "#22c55e" : "#38bdf8",
             }}
           >
-            Free Tier
+            {isPro ? "Pro" : "Free Tier"}
           </span>
         </Row>
       </Section>
