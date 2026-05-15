@@ -1,11 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-
-// ❌ FIXED: onClose() was called twice in succession — removed duplicate
-// ❌ FIXED: try/catch wrapped navigate() which never throws — moved outside
-// ❌ FIXED: onSuccess prop is now accepted and called after returning from payment
-//           (PaymentSimulator calls it via URL, so we still navigate; Dashboard passes onSuccess)
-// ❌ FIXED: Added input validation for max amount (prevents absurdly large values)
+import { PAYMENT_LIMITS } from "../constants/limits";
 
 const DepositModal = ({ onClose, onSuccess }) => {
   const navigate = useNavigate();
@@ -16,13 +11,13 @@ const DepositModal = ({ onClose, onSuccess }) => {
   const handleDeposit = () => {
     const parsed = parseFloat(amount);
 
-    if (!amount || isNaN(parsed) || parsed <= 0) {
-      setError("Please enter a valid amount greater than 0.");
+    if (!amount || isNaN(parsed) || parsed <= PAYMENT_LIMITS.MIN_AMOUNT) {
+      setError(`Please enter a valid amount greater than ${PAYMENT_LIMITS.MIN_AMOUNT}.`);
       return;
     }
 
-    if (parsed > 1_000_000) {
-      setError("Maximum deposit amount is $1,000,000.");
+    if (parsed > PAYMENT_LIMITS.MAX_AMOUNT) {
+      setError(`Maximum deposit amount is ${PAYMENT_LIMITS.MAX_AMOUNT.toLocaleString()}.`);
       return;
     }
 

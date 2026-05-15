@@ -1,5 +1,7 @@
 import React, { useState } from "react";
+import { toast } from "react-hot-toast";
 import API from "../api/api";
+import { copyTextToClipboard } from "../utils/clipboard";
 
 const RequestMoneyModal = ({ onClose }) => {
   const [amount, setAmount] = useState("");
@@ -28,10 +30,17 @@ const RequestMoneyModal = ({ onClose }) => {
   }
 };
 
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(paymentLink);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const copyToClipboard = async () => {
+    if (!paymentLink) return;
+
+    const succeeded = await copyTextToClipboard(paymentLink);
+    if (succeeded) {
+      setCopied(true);
+      toast.success("Payment link copied to clipboard.");
+      setTimeout(() => setCopied(false), 2000);
+    } else {
+      toast.error("Unable to copy link. Please copy it manually.");
+    }
   };
 
   return (
@@ -201,7 +210,8 @@ const RequestMoneyModal = ({ onClose }) => {
                 </div>
                 <button
                   onClick={copyToClipboard}
-                  className="flex-shrink-0 bg-[rgba(56,189,248,0.15)] hover:bg-[rgba(56,189,248,0.25)] text-[#38bdf8] p-2 rounded-lg transition-colors"
+                  disabled={!paymentLink}
+                  className="flex-shrink-0 bg-[rgba(56,189,248,0.15)] hover:bg-[rgba(56,189,248,0.25)] text-[#38bdf8] p-2 rounded-lg transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                   title="Copy Link"
                 >
                   {copied ? (

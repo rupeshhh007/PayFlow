@@ -3,18 +3,20 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { simulatePayment } from "../api/paymentApi";
 import toast from "react-hot-toast";
 import { useCurrency } from "../context/CurrencyContext";
+import { PAYMENT_LIMITS } from "../constants/limits";
+
 const PaymentSimulator = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const searchParams = new URLSearchParams(location.search);
-  const rawAmount = parseFloat(searchParams.get("amount"));
+  const rawAmount = Number(searchParams.get("amount"));
 
-const amount =
-  Number.isFinite(rawAmount) &&
-  rawAmount > 0 &&
-  rawAmount <= 100000
-    ? rawAmount
-    : null;
+  const amount =
+    Number.isFinite(rawAmount) &&
+    rawAmount >= PAYMENT_LIMITS.MIN_AMOUNT &&
+    rawAmount <= PAYMENT_LIMITS.MAX_AMOUNT
+      ? rawAmount
+      : null;
 
 
   const [activeTab, setActiveTab] = useState("upi");
@@ -64,22 +66,21 @@ const amount =
       } catch (error) {
         console.error("Payment failed to simulate:", error);
         setStatus("idle");
-        alert("Payment simulation failed. Check console.");
+        toast.error("Payment simulation failed. Please try again.");
       }
     }, 2000);
   };
 if (!amount) {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0a1020] text-white">
-      <div className="bg-slate-900 border border-slate-700 rounded-2xl p-8 text-center">
-        <h2 className="text-xl font-bold mb-2">
-          Invalid Payment Request
-        </h2>
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#0a1020] text-white">
+        <div className="bg-slate-900 border border-slate-700 rounded-2xl p-8 text-center">
+          <h2 className="text-xl font-bold mb-2">
+            Invalid Payment Request
+          </h2>
 
-        <p className="text-slate-400 mb-6">
-          The payment amount is invalid.
-        </p>
-
+          <p className="text-slate-400 mb-4">
+            The payment amount must be between {PAYMENT_LIMITS.MIN_AMOUNT} and {PAYMENT_LIMITS.MAX_AMOUNT}.
+          </p>
         <button
           onClick={() => navigate("/dashboard")}
           className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 transition"

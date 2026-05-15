@@ -12,7 +12,7 @@ const AppLayout = () => {
       <Sidebar />
 
       {/* Main Content */}
-      <main className="ml-56 pt-14 min-h-screen px-6 py-7">
+      <main className="ml-0 md:ml-56 pt-14 min-h-screen px-6 py-7">
         <div className="max-w-6xl mx-auto">
           <Outlet />
         </div>

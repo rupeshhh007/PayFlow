@@ -100,7 +100,7 @@ const Sidebar = () => {
   return (
     <>
       <aside
-        className="fixed left-0 top-14 bottom-0 w-56 flex flex-col gap-6 px-3 py-5 overflow-y-auto"
+        className="hidden md:flex fixed left-0 top-14 bottom-0 w-56 flex-col gap-6 px-3 py-5 overflow-y-auto"
         style={{
           background:
             "linear-gradient(180deg, rgba(10,14,26,0.97) 0%, rgba(8,12,22,0.99) 100%)",

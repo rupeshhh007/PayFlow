@@ -12,6 +12,7 @@ import PaymentSimulator from "./pages/PaymentSimulator";
 import { useAuth } from "./context/AuthContext";
 import PayRequest from "./pages/PayRequest";
 import RecurringPayment from "./pages/RecurringPayment";
+import { OfflineDetector } from "./components/OfflineDetector";
 
 // ❌ FIXED: /payment was double-wrapped — it's already inside the outer ProtectedRoute layout
 // ❌ FIXED: Root path "/" had no handler — users who typed "/" got redirected to /login
@@ -68,7 +69,9 @@ const RootRedirect = () => {
 
 function App() {
   return (
-    <Routes>
+    <>
+      <OfflineDetector />
+      <Routes>
       {/* Root */}
       <Route path="/" element={<RootRedirect />} />
 
@@ -100,6 +103,7 @@ function App() {
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
+    </>
   );
 }
 

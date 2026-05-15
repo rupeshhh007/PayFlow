@@ -1,4 +1,5 @@
 import { useAuth } from "../context/AuthContext";
+import { MobileMenu } from "./MobileMenu";
 
 const Navbar = () => {
   const { user, logout } = useAuth();
@@ -17,6 +18,7 @@ const Navbar = () => {
     >
       {/* Logo */}
       <div className="flex items-center gap-2.5">
+        <MobileMenu onLogout={logout} />
         <div
           className="w-8 h-8 rounded-lg flex items-center justify-center"
           style={{
